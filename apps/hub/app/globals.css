@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --rh-bg: #0b0f14;
+  --rh-surface: #121823;
+  --rh-text: #e6edf3;
+  --rh-muted: #8b98a5;
+  --rh-green: #22c55e;
+  --rh-yellow: #eab308;
+  --rh-red: #ef4444;
+}
+
+body {
+  background: var(--rh-bg);
+  color: var(--rh-text);
+}

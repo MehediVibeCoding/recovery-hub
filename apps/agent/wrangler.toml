@@ -1,0 +1,12 @@
+name = "recovery-hub-agent"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# প্রতি ২ মিনিটে একবার জেগে উঠে পরবর্তী কাস্টমারকে SMS পাঠানোর চেষ্টা করবে।
+# আসল পাঠানোর লজিক Phase 4 (doc 07, SMS Agent)-এ বসবে।
+[triggers]
+crons = ["*/2 * * * *"]
+
+[vars]
+# এখানে production-এ secrets বসবে না — Cloudflare dashboard-এ Secrets হিসেবে বসবে:
+# SMS_GATEWAY_CLOUD_API_KEY, SMS_GATEWAY_DEVICE_ID, AGENT_API_TOKEN
