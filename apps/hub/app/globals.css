@@ -2,17 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --rh-bg: #0b0f14;
-  --rh-surface: #121823;
-  --rh-text: #e6edf3;
-  --rh-muted: #8b98a5;
-  --rh-green: #22c55e;
-  --rh-yellow: #eab308;
-  --rh-red: #ef4444;
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    touch-action: manipulation;
+    min-height: 100vh;
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  @supports (overflow-x: clip) {
+    html,
+    body {
+      overflow-x: clip;
+    }
+  }
+  input,
+  textarea,
+  select {
+    outline: none !important;
+    -webkit-appearance: none;
+  }
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 2px #44a7fc !important;
+    border-color: #44a7fc !important;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid #44a7fc;
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
 }
 
-body {
-  background: var(--rh-bg);
-  color: var(--rh-text);
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.sleek-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(68, 167, 252, 0.35) transparent;
+}
+.sleek-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.sleek-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sleek-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(68, 167, 252, 0.35);
+  border-radius: 9999px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes sheetUp {
+  from {
+    transform: translateY(28px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@layer utilities {
+  .animate-sheet-up {
+    animation: sheetUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 }

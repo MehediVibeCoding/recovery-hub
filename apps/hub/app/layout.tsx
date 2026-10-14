@@ -1,50 +1,37 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { dmSans, hindSiliguri } from "./fonts";
+import { ToastProvider } from "../components/common/Toast";
+import Sidebar from "../components/shell/Sidebar";
 
 export const metadata: Metadata = {
   title: "Recovery Hub",
   description: "Vangcur abandoned-checkout recovery system",
+  robots: { index: false, follow: false },
 };
 
-const NAV_ITEMS = [
-  { label: "Overview", href: "#", active: true },
-  { label: "Drafts Inbox", href: "#" },
-  { label: "SMS Agent", href: "#" },
-  { label: "Templates", href: "#" },
-  { label: "Orders Backup", href: "#" },
-  { label: "Export Center", href: "#" },
-  { label: "Settings", href: "#" },
-];
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="bn">
-      <body>
-        <div className="flex min-h-screen">
-          <aside className="w-56 shrink-0 border-r border-white/10 p-4">
-            <div className="mb-6 text-lg font-semibold">Recovery Hub</div>
-            <nav className="flex flex-col gap-1">
-              {NAV_ITEMS.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className={`rounded-md px-3 py-2 text-sm ${
-                    item.active
-                      ? "bg-white/10 font-medium"
-                      : "text-white/60 hover:bg-white/5"
-                  }`}
-                >
-                  {item.label}
-                </a>
-              ))}
-            </nav>
-          </aside>
-          <main className="flex-1 p-6">{children}</main>
-        </div>
+    <html lang="bn" className={`${dmSans.variable} ${hindSiliguri.variable}`}>
+      <body className="min-h-screen bg-transparent font-body text-ink antialiased">
+        {/* Mehediadmin-এর স্কাই-ব্লু ক্যানভাস */}
+        <div aria-hidden="true" className="fixed inset-0 -z-10 bg-gradient-to-b from-brand-bg via-[#DCEBFD] to-white" />
+        <ToastProvider>
+          <div className="relative flex min-h-screen w-full flex-col md:flex-row">
+            <Sidebar />
+            <main
+              className="min-w-0 flex-1 overflow-x-hidden px-3.5 pt-3 sm:px-5 md:px-8 md:pb-8 md:pt-6 xl:px-10"
+              style={{ paddingBottom: "calc(110px + env(safe-area-inset-bottom, 0px))" }}
+            >
+              <div className="mx-auto w-full max-w-[1520px]">{children}</div>
+            </main>
+          </div>
+        </ToastProvider>
       </body>
     </html>
   );

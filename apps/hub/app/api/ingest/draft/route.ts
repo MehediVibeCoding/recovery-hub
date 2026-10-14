@@ -9,6 +9,7 @@ import {
 import { scoreDraft } from "@recovery-hub/engine-drafts";
 import { getSupabaseServiceClient } from "../../../../lib/supabase/server";
 import { checkIngestAuth } from "../../../../lib/ingestAuth";
+import { loadScoringConfig } from "../../../../lib/hubConfig";
 
 export const runtime = "nodejs";
 
@@ -94,7 +95,11 @@ export async function POST(req: Request) {
       ? { success: contactRes.data.courier_success, total: contactRes.data.courier_total }
       : undefined;
 
-  const ruled = applyRuleLayer({
+  // Settings পেজে বদলানো রুল/ওয়েট (ব্যর্থ হলে ডিফল্ট)
+  const scoring = await loadScoringConfig();
+
+  const ruled = applyRuleLayer(
+    {
     phoneNormalized: engineResult.phoneNormalized,
     score: engineResult.score,
     confidence: engineResult.confidence,
@@ -102,7 +107,9 @@ export async function POST(req: Request) {
     allowlisted: Boolean(allowRes.data),
     history,
     courier,
-  });
+  },
+  scoring.ruleParams
+  );
 
   const priority = computePriority({
     bucket: ruled.bucket,
@@ -110,7 +117,7 @@ export async function POST(req: Request) {
     confidence: engineResult.confidence,
     cartTotal: draft.cart_total ?? 0,
     minutesSinceActivity: 0, // this request IS the activity
-  });
+  }, scoring.weights);
 
   // Merge-safe upsert: an incoming empty/missing field never overwrites an
   // existing non-empty value. cart_* replaces as a whole when provided.
