@@ -22,8 +22,9 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 export function middleware(req: NextRequest) {
-  const password = process.env.HUB_ADMIN_PASSWORD;
-  const user = process.env.HUB_ADMIN_USER || "admin";
+  // পেস্ট করার সময় ঢুকে যাওয়া শুরু/শেষের স্পেস বা নতুন লাইন বাদ
+  const password = (process.env.HUB_ADMIN_PASSWORD ?? "").trim();
+  const user = (process.env.HUB_ADMIN_USER || "admin").trim();
 
   if (!password) {
     return new NextResponse(
@@ -35,7 +36,9 @@ export function middleware(req: NextRequest) {
   const header = req.headers.get("authorization") || "";
   if (header.startsWith("Basic ")) {
     try {
-      const decoded = atob(header.slice(6));
+      // atob লাতিন-১ দেয়; ব্রাউজার UTF-8 পাঠায় (charset="UTF-8") — তাই বাইট থেকে UTF-8 ডিকোড
+      const bin = atob(header.slice(6).trim());
+      const decoded = new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
       const i = decoded.indexOf(":");
       const u = decoded.slice(0, i);
       const p = decoded.slice(i + 1);
