@@ -99,3 +99,18 @@ export const OrderIngestSchema = z
   .strict();
 
 export type OrderIngestPayload = z.infer<typeof OrderIngestSchema>;
+
+/**
+ * POST /api/ingest/stock — restock-notification requests ("আমাকে জানান"
+ * বাটন), forwarded here from the store instead of Google Sheets.
+ */
+export const StockRequestIngestSchema = z
+  .object({
+    product_id: z.string().min(1).max(100),
+    product_name: z.string().max(200).optional(),
+    customer_name: z.string().max(100).optional(),
+    phone: z.string().min(1).max(32),
+  })
+  .strict();
+
+export type StockRequestIngestPayload = z.infer<typeof StockRequestIngestSchema>;
