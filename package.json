@@ -1,16 +1,33 @@
 {
-  "name": "recovery-hub",
+  "name": "@recovery-hub/hub",
+  "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare preview"
+  },
+  "dependencies": {
+    "@recovery-hub/shared": "*",
+    "@recovery-hub/engine-drafts": "*",
+    "@supabase/supabase-js": "2.45.4",
+    "server-only": "0.0.1",
+    "next": "15.5.24",
+    "react": "19.0.3",
+    "react-dom": "19.0.3"
   },
   "devDependencies": {
-    "typescript": "5.6.3"
+    "@types/node": "22.9.0",
+    "@types/react": "19.0.1",
+    "@types/react-dom": "19.0.1",
+    "typescript": "5.6.3",
+    "tailwindcss": "3.4.14",
+    "postcss": "8.4.47",
+    "autoprefixer": "10.4.20",
+    "@opennextjs/cloudflare": "^1.0.0",
+    "wrangler": "^4.0.0"
   }
 }
