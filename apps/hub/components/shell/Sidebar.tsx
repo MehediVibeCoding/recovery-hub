@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Icon from "../common/Icon";
 import { MOBILE_TABS, NAV_ITEMS } from "./nav";
+import { hubLogout } from "../../app/actions/auth";
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
@@ -73,7 +74,15 @@ export default function Sidebar() {
             );
           })}
         </nav>
-        <div className="px-2 pt-3 font-body text-[10.5px] font-semibold text-muted">Phase 2 · Admin Panel</div>
+        <form action={hubLogout} className="pt-3">
+          <button
+            type="submit"
+            className="flex h-11 w-full items-center gap-3 rounded-[14px] px-3.5 font-body text-[13.5px] font-extrabold text-muted transition-all duration-brand hover:bg-red-50 hover:text-danger active:scale-[0.98]"
+          >
+            <Icon name="logout" className="h-5 w-5 shrink-0" />
+            লগআউট
+          </button>
+        </form>
       </aside>
 
       {/* মোবাইল নিচের ট্যাব বার (z-40) */}
@@ -145,6 +154,15 @@ export default function Sidebar() {
                   </Link>
                 );
               })}
+              <form action={hubLogout}>
+                <button
+                  type="submit"
+                  className="flex h-12 w-full items-center gap-3 rounded-2xl bg-red-50 px-4 font-body text-[14px] font-extrabold text-danger transition-all duration-brand active:scale-[0.98]"
+                >
+                  <Icon name="logout" className="h-5 w-5" />
+                  লগআউট
+                </button>
+              </form>
             </div>
           </div>
         </>

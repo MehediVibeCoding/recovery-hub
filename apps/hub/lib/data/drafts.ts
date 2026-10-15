@@ -4,6 +4,7 @@ import { PAGE_SIZE } from "../constants/pagination";
 import { safeSearchTerm } from "../security";
 import type { Bucket, ContactRow, DraftEvent, DraftRow, DraftStatus } from "../types";
 import { fail, pageParam, strParam } from "./util";
+import { requireSession } from "../auth/guard";
 
 export const STATUS_FILTERS = ["open", "draft", "contacted", "recovered", "lost", "invalid", "junk", "all"] as const;
 export type StatusFilter = (typeof STATUS_FILTERS)[number];
@@ -63,6 +64,7 @@ export interface DraftsPage {
 }
 
 export async function listDrafts(p: DraftsParams): Promise<DraftsPage> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const from = (p.page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -116,6 +118,7 @@ export interface DraftDetail {
 }
 
 export async function getDraftDetail(id: string): Promise<DraftDetail | null> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const { data: draft, error } = await supabase.from("checkout_drafts").select("*").eq("id", id).maybeSingle();
   if (error) fail("ড্রাফট ডিটেইল", error);

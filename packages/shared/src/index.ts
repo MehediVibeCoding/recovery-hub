@@ -1,6 +1,6 @@
 export { normalizeBdPhone } from "./phone.ts";
-export { DraftIngestSchema, OrderIngestSchema, CartItemSchema, StockRequestIngestSchema } from "./schemas.ts";
-export type { DraftIngestPayload, OrderIngestPayload, StockRequestIngestPayload } from "./schemas.ts";
+export { DraftIngestSchema, OrderIngestSchema, CartItemSchema, StockRequestIngestSchema, StockRestockIngestSchema } from "./schemas.ts";
+export type { DraftIngestPayload, OrderIngestPayload, StockRequestIngestPayload, StockRestockIngestPayload } from "./schemas.ts";
 export { signIngestRequest, verifyIngestRequest } from "./hmac.ts";
 export type { VerifyResult } from "./hmac.ts";
 export { applyRuleLayer, DEFAULT_RULE_PARAMS } from "./ruleLayer.ts";

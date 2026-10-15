@@ -7,8 +7,10 @@ import { writeAudit } from "../../lib/audit";
 import { sanitizeInput } from "../../lib/security";
 import { AGENT_CONFIG_KEY, type AgentConfig } from "../../lib/data/agent";
 import type { ActionResult } from "../../lib/types";
+import { requireSession } from "../../lib/auth/guard";
 
 export async function saveAgentConfig(input: AgentConfig): Promise<ActionResult> {
+  await requireSession();
   const delay = Number(input.delay_minutes);
   const cap = Number(input.daily_cap);
   const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -34,6 +36,7 @@ export async function saveAgentConfig(input: AgentConfig): Promise<ActionResult>
 }
 
 export async function addDncContact(phoneInput: string, noteInput: string): Promise<ActionResult> {
+  await requireSession();
   const phone = normalizeBdPhone(sanitizeInput(phoneInput, 32));
   if (!phone) return { ok: false, error: "সঠিক বাংলাদেশি মোবাইল নম্বর দিন (01XXXXXXXXX)" };
   const note = sanitizeInput(noteInput, 200);
@@ -48,6 +51,7 @@ export async function addDncContact(phoneInput: string, noteInput: string): Prom
 }
 
 export async function removeDncContact(phone: string): Promise<ActionResult> {
+  await requireSession();
   const p = normalizeBdPhone(sanitizeInput(phone, 32));
   if (!p) return { ok: false, error: "অবৈধ নম্বর" };
   const supabase = getSupabaseServiceClient();

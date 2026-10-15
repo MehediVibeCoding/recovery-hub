@@ -2,6 +2,7 @@ import "server-only";
 import { DEFAULT_PRIORITY_WEIGHTS } from "@recovery-hub/shared";
 import { getSupabaseServiceClient } from "../supabase/server";
 import { fail } from "./util";
+import { requireSession } from "../auth/guard";
 
 export interface RuleRow {
   id: string;
@@ -58,6 +59,7 @@ export interface SettingsPageData {
 }
 
 export async function getSettingsPage(): Promise<SettingsPageData> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const [rulesRes, setRes, entriesRes, keysRes, auditRes] = await Promise.all([
     supabase.from("hub_rules").select("*").order("key"),

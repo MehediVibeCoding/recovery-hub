@@ -1,62 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readSessionToken, SESSION_COOKIE, sessionSecret } from "./lib/auth/session";
 
 /**
- * অ্যাডমিন গেট (Phase 2-এ SSO আসার আগের সাময়িক সুরক্ষা)।
+ * হাবের প্রবেশদ্বার (middleware) — "যার সেশন নেই, সে কিছুই দেখে না"।
  *
- * এই সাইটে এখন আসল গ্রাহকের ফোন/ঠিকানা দেখা যায় আর ডাটা বদলানো যায় — তাই workers.dev
- * লিংক জানা যে কেউ ঢুকতে পারবে, এটা চলবে না। HTTP Basic Auth:
- *   HUB_ADMIN_USER (ডিফল্ট "admin") + HUB_ADMIN_PASSWORD (বাধ্যতামূলক)
- * HUB_ADMIN_PASSWORD সেট না থাকলে সাইট বন্ধ (fail-closed) — খোলা অবস্থায় ডাটা ফাঁস হওয়ার চেয়ে ভালো।
+ *  • বৈধ সেশন কুকি থাকলে → ঢুকতে দেয় (কুকি দেয় শুধু: ১. অ্যাডমিন প্যানেলের SSO, ২. গোপন লগইন পেজ)।
+ *  • সেশন না থাকলে → প্রতিটা URL-এ সাধারণ 404, কোনো লগইন বক্স/401/হিন্ট নেই। হাব যে আছে, বাইরে থেকে বোঝা যায় না।
+ *  • ব্যতিক্রম ১: HUB_LOGIN_PATH-এর গোপন পাথ (ইমেইল+পাসওয়ার্ড লগইন, Supabase Auth) — জরুরি প্রবেশপথ।
+ *  • ব্যতিক্রম ২: /api/sso (সই করা টোকেন নিজেই যাচাই হয়; ভুল হলে সেটাও 404)।
+ *  • /api/ingest/* এখানে আসেই না (matcher-এ বাদ) — মূল সাইটের HMAC-সই করা রিকোয়েস্ট, নিজস্ব গেট।
  *
- * /api/ingest/* এখানে বাদ — সেগুলো নিজস্ব HMAC সিগনেচারে সুরক্ষিত।
+ * এটা প্রথম স্তর। দ্বিতীয় স্তর: ডাটা-লেয়ার (lib/data), সব সার্ভার অ্যাকশন ও API রুট নিজে সেশন যাচাই করে (lib/auth/guard.ts)।
  */
 export const config = {
-  matcher: ["/((?!api/ingest|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api/ingest|_next/static|_next/image|favicon.ico|vangcur-logo.png|vangcur-mark.png).*)"],
 };
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
+function hardened(res: NextResponse): NextResponse {
+  res.headers.set("Cache-Control", "no-store");
+  res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set("Referrer-Policy", "no-referrer");
+  res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  res.headers.set("Cross-Origin-Resource-Policy", "same-origin");
+  return res;
 }
 
-export function middleware(req: NextRequest) {
-  // পেস্ট করার সময় ঢুকে যাওয়া শুরু/শেষের স্পেস বা নতুন লাইন বাদ
-  const password = (process.env.HUB_ADMIN_PASSWORD ?? "").trim();
-  const user = (process.env.HUB_ADMIN_USER || "admin").trim();
+function notFound(): NextResponse {
+  return hardened(
+    new NextResponse("404 Not Found", {
+      status: 404,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    })
+  );
+}
 
-  if (!password) {
-    return new NextResponse(
-      "Recovery Hub বন্ধ আছে: HUB_ADMIN_PASSWORD environment variable সেট করা হয়নি। (Cloudflare → Settings → Variables and Secrets)",
-      { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } }
+function loginPathFromEnv(): string | null {
+  const slug = (process.env.HUB_LOGIN_PATH ?? "").trim().replace(/^\/+|\/+$/g, "");
+  // অন্তত ১২ অক্ষরের লম্বা র‍্যান্ডম স্লাগ — ছোট/অনুমানযোগ্য হলে গোপন পথ বন্ধ থাকে
+  return /^[A-Za-z0-9_-]{12,80}$/.test(slug) ? `/${slug}` : null;
+}
+
+export async function middleware(req: NextRequest) {
+  if (!sessionSecret()) {
+    // কনফিগারেশন ভুল — মালিককে জানানোর জন্য একমাত্র জায়গা যেখানে 404 নয়
+    return hardened(
+      new NextResponse("Recovery Hub বন্ধ আছে: HUB_SESSION_SECRET (কমপক্ষে ৩২ অক্ষর) সেট করা হয়নি।", {
+        status: 503,
+        headers: { "content-type": "text/plain; charset=utf-8" },
+      })
     );
   }
 
-  const header = req.headers.get("authorization") || "";
-  if (header.startsWith("Basic ")) {
-    try {
-      // atob লাতিন-১ দেয়; ব্রাউজার UTF-8 পাঠায় (charset="UTF-8") — তাই বাইট থেকে UTF-8 ডিকোড
-      const bin = atob(header.slice(6).trim());
-      const decoded = new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
-      const i = decoded.indexOf(":");
-      const u = decoded.slice(0, i);
-      const p = decoded.slice(i + 1);
-      if (i >= 0 && timingSafeEqual(u, user) && timingSafeEqual(p, password)) {
-        const res = NextResponse.next();
-        res.headers.set("Cache-Control", "no-store");
-        return res;
-      }
-    } catch {
-      /* অবৈধ হেডার → নিচে 401 */
+  const { pathname } = req.nextUrl;
+
+  // SSO: টোকেন যাচাই রুটের ভেতরে হয়
+  if (pathname === "/api/sso") return hardened(NextResponse.next());
+
+  const loginPath = loginPathFromEnv();
+  const session = await readSessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+
+  if (session) {
+    if (pathname === "/hub-login" || (loginPath && pathname === loginPath)) {
+      return hardened(NextResponse.redirect(new URL("/", req.url)));
     }
+    return hardened(NextResponse.next());
   }
 
-  return new NextResponse("লগইন প্রয়োজন", {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": 'Basic realm="Recovery Hub", charset="UTF-8"',
-      "content-type": "text/plain; charset=utf-8",
-    },
-  });
+  if (loginPath && pathname === loginPath) {
+    return hardened(NextResponse.rewrite(new URL("/hub-login", req.url)));
+  }
+
+  return notFound();
 }

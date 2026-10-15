@@ -32,12 +32,12 @@ values ('main-store-ingest', 'ingest', 'rhk_38dee933d7f84c7a',
 NEXT_PUBLIC_SUPABASE_URL=<ধাপ ১ থেকে>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<ধাপ ১ থেকে>
 SUPABASE_SERVICE_ROLE_KEY=<ধাপ ১ থেকে>
-INGEST_HMAC_SECRET=77be9345a35edfd40f4d91524d845a6e0c3999d0044290638e3672856e225f4d
+INGEST_HMAC_SECRET=<নিজে জেনারেট করুন: openssl rand -hex 32 — কখনো গিটে কমিট করবেন না>
 ```
 
-(`INGEST_HMAC_SECRET`-টা এখনই জেনারেট করে দিয়েছি, গোপন রাখবেন — পরে
-Vangcur checkout-এর কোডেও এই একই value বসবে, যাতে দুই পাশ একে অপরকে চিনতে
-পারে।)
+(`INGEST_HMAC_SECRET` গোপন রাখুন। Vangcur মূল সাইট ও Mehediadmin-এও এই একই value
+`RECOVERY_HUB_HMAC_SECRET` নামে বসবে। ⚠️ এই ফাইলে আগে একটা আসল secret কমিট হয়ে গিয়েছিল —
+সেটা বাতিল (rotate) করে নতুন বসাতে হবে; সম্পূর্ণ ধাপ: docs/SECURITY-AND-SETUP.md।)
 
 ## এখানেই এখন থামা — Phase 1-এর বাকি অংশ
 

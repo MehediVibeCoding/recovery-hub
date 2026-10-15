@@ -40,6 +40,10 @@ export async function POST(req: Request) {
         customer_name: reqBody.customer_name,
         phone: phoneNormalized,
         status: "pending",
+        // আবার নতুন করে অনুরোধ করলে আগের "স্টকে ফিরেছে" চিহ্ন মুছে নতুন করে অপেক্ষা শুরু
+        restocked_at: null,
+        restocked_stock: null,
+        notified_at: null,
       },
       { onConflict: "product_id,phone" }
     )

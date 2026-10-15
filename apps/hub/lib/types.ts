@@ -85,3 +85,19 @@ export interface ActionResult<T = undefined> {
   error?: string;
   data?: T;
 }
+
+// ---------- স্টক নোটিফিকেশন রিকোয়েস্ট ----------
+export type StockRequestStatus = "pending" | "notified" | "cancelled";
+
+export interface StockRequestRow {
+  id: string;
+  product_id: string;
+  product_name: string | null;
+  customer_name: string | null;
+  phone: string;
+  status: StockRequestStatus;
+  restocked_at: string | null;
+  restocked_stock: number | null;
+  notified_at: string | null;
+  created_at: string;
+}

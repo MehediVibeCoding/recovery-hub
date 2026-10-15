@@ -2,6 +2,7 @@ import "server-only";
 import { getSupabaseServiceClient } from "../supabase/server";
 import { dhakaDateToISO } from "../format";
 import { fail } from "./util";
+import { requireSession } from "../auth/guard";
 
 export const EXPORT_ROW_CAP = 20000;
 const BATCH = 1000;
@@ -153,6 +154,7 @@ function applyExportFilters(qb: any, ds: ExportDataset, f: ExportFilters) {
 }
 
 export async function countRows(ds: ExportDataset, f: ExportFilters): Promise<number> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const { count, error } = await applyExportFilters(
     supabase.from(ds.table).select("*", { count: "exact", head: true }),
@@ -167,6 +169,7 @@ export async function fetchRows(
   ds: ExportDataset,
   f: ExportFilters
 ): Promise<{ rows: Record<string, unknown>[]; truncated: boolean }> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const select = ds.columns.map((c) => c.key).join(",");
   const rows: Record<string, unknown>[] = [];
@@ -186,6 +189,7 @@ export async function fetchRows(
 }
 
 export async function distinctOrderStatuses(): Promise<string[]> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const { data } = await supabase.from("orders_backup").select("order_status").limit(5000);
   return Array.from(new Set((data ?? []).map((r) => r.order_status).filter((s): s is string => Boolean(s)))).sort();

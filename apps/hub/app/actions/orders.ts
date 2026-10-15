@@ -3,9 +3,11 @@
 import { isUuid } from "../../lib/security";
 import { getOrderDetail, type OrderDetail } from "../../lib/data/orders";
 import type { ActionResult } from "../../lib/types";
+import { requireSession } from "../../lib/auth/guard";
 
 // অর্ডার ব্যাকআপ শুধু-পড়ার — এখানে কোনো মিউটেশন নেই
 export async function loadOrderDetail(id: string): Promise<ActionResult<OrderDetail>> {
+  await requireSession();
   if (!isUuid(id)) return { ok: false, error: "অবৈধ আইডি" };
   try {
     const detail = await getOrderDetail(id);

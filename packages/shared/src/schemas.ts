@@ -114,3 +114,13 @@ export const StockRequestIngestSchema = z
   .strict();
 
 export type StockRequestIngestPayload = z.infer<typeof StockRequestIngestSchema>;
+
+// অ্যাডমিন প্যানেল থেকে "স্টক ০ → বেশি" সিগন্যাল
+export const StockRestockIngestSchema = z
+  .object({
+    product_id: z.string().min(1).max(100),
+    stock: z.number().int().min(1).max(1000000),
+  })
+  .strict();
+
+export type StockRestockIngestPayload = z.infer<typeof StockRestockIngestSchema>;

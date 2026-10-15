@@ -2,6 +2,7 @@ import "server-only";
 import { getSupabaseServiceClient } from "../supabase/server";
 import type { ContactRow, DraftRow } from "../types";
 import { fail } from "./util";
+import { requireSession } from "../auth/guard";
 
 export const AGENT_CONFIG_KEY = "agent.config";
 
@@ -59,6 +60,7 @@ export interface AgentPageData {
 }
 
 export async function getAgentPage(): Promise<AgentPageData> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const now = Date.now();
 

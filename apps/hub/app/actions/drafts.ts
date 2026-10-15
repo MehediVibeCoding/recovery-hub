@@ -7,6 +7,7 @@ import { ADMIN_ACTOR, writeAudit } from "../../lib/audit";
 import { isUuid, sanitizeInput } from "../../lib/security";
 import { getDraftDetail, type DraftDetail } from "../../lib/data/drafts";
 import type { ActionResult, DraftStatus } from "../../lib/types";
+import { requireSession } from "../../lib/auth/guard";
 
 const STATUSES: DraftStatus[] = ["draft", "contacted", "recovered", "lost", "invalid", "junk"];
 
@@ -19,6 +20,7 @@ async function addEvent(draftId: string, type: string, payload: Record<string, u
 }
 
 export async function loadDraftDetail(id: string): Promise<ActionResult<DraftDetail>> {
+  await requireSession();
   if (!isUuid(id)) return { ok: false, error: "অবৈধ আইডি" };
   try {
     const detail = await getDraftDetail(id);
@@ -30,6 +32,7 @@ export async function loadDraftDetail(id: string): Promise<ActionResult<DraftDet
 }
 
 export async function setDraftStatus(id: string, status: string): Promise<ActionResult> {
+  await requireSession();
   if (!isUuid(id)) return { ok: false, error: "অবৈধ আইডি" };
   if (!STATUSES.includes(status as DraftStatus)) return { ok: false, error: "অবৈধ স্ট্যাটাস" };
   const supabase = getSupabaseServiceClient();
@@ -61,6 +64,7 @@ export async function setDraftStatus(id: string, status: string): Promise<Action
 }
 
 export async function saveDraftNote(id: string, note: string): Promise<ActionResult> {
+  await requireSession();
   if (!isUuid(id)) return { ok: false, error: "অবৈধ আইডি" };
   const clean = sanitizeInput(note, 1000);
   const supabase = getSupabaseServiceClient();
@@ -77,6 +81,7 @@ export async function saveDraftNote(id: string, note: string): Promise<ActionRes
 
 /** Do-not-contact — ড্রাফটে ফ্ল্যাগ + (নম্বর থাকলে) contacts টেবিলেও, যাতে ভবিষ্যতের সব ড্রাফটে প্রযোজ্য হয় */
 export async function setDraftDnc(id: string, value: boolean): Promise<ActionResult> {
+  await requireSession();
   if (!isUuid(id)) return { ok: false, error: "অবৈধ আইডি" };
   const supabase = getSupabaseServiceClient();
   const { data: d, error: readErr } = await supabase
@@ -107,6 +112,7 @@ export async function setDraftDnc(id: string, value: boolean): Promise<ActionRes
 
 /** নম্বর ব্লকলিস্টে তোলা + ড্রাফট Junk করা */
 export async function blockDraftPhone(id: string): Promise<ActionResult> {
+  await requireSession();
   if (!isUuid(id)) return { ok: false, error: "অবৈধ আইডি" };
   const supabase = getSupabaseServiceClient();
   const { data: d, error: readErr } = await supabase

@@ -2,14 +2,17 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { toCsv } from "../../../../lib/csv";
 import { writeAudit } from "../../../../lib/audit";
+import { getSession } from "../../../../lib/auth/guard";
 import { DATASETS, EXPORT_ROW_CAP, fetchRows, type ExportKind } from "../../../../lib/data/export";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // GET /api/export/<drafts|orders|contacts|audit>?from=YYYY-MM-DD&to=YYYY-MM-DD&status=&bucket=&dnc=1
-// অ্যাডমিন গেট (middleware.ts) এই রুটকেও ঢাকে।
+// সেশন-গেট (middleware.ts + এখানে নিজস্ব যাচাই) এই রুটকেও ঢাকে।
 export async function GET(req: Request, ctx: { params: Promise<{ kind: string }> }) {
+  // দ্বিতীয় স্তরের গার্ড (middleware ছাড়াও)
+  if (!(await getSession())) return new NextResponse("404 Not Found", { status: 404 });
   const { kind } = await ctx.params;
   if (!(kind in DATASETS)) {
     return NextResponse.json({ error: "অজানা এক্সপোর্ট ধরন" }, { status: 404 });

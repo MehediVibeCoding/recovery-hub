@@ -7,6 +7,7 @@ import { sanitizeInput } from "../../lib/security";
 import { loadTemplates } from "../../lib/data/templates";
 import { TEMPLATES_SETTING_KEY, type SmsTemplate } from "../../lib/templates";
 import type { ActionResult } from "../../lib/types";
+import { requireSession } from "../../lib/auth/guard";
 
 const MAX_TEMPLATES = 20;
 
@@ -36,6 +37,7 @@ export async function upsertTemplate(input: {
   enabled: boolean;
   is_default: boolean;
 }): Promise<ActionResult<SmsTemplate[]>> {
+  await requireSession();
   const name = sanitizeInput(input.name, 60);
   const body = sanitizeInput(input.body, 600);
   if (!name) return { ok: false, error: "টেমপ্লেটের নাম দিন" };
@@ -70,6 +72,7 @@ export async function upsertTemplate(input: {
 }
 
 export async function deleteTemplate(id: string): Promise<ActionResult<SmsTemplate[]>> {
+  await requireSession();
   try {
     const { items } = await loadTemplates();
     const target = items.find((t) => t.id === id);
@@ -84,6 +87,7 @@ export async function deleteTemplate(id: string): Promise<ActionResult<SmsTempla
 }
 
 export async function setTemplateEnabled(id: string, enabled: boolean): Promise<ActionResult<SmsTemplate[]>> {
+  await requireSession();
   try {
     const { items } = await loadTemplates();
     const target = items.find((t) => t.id === id);

@@ -3,6 +3,7 @@ import { getSupabaseServiceClient } from "../supabase/server";
 import { dhakaDateKey, dhakaDayStartISO } from "../format";
 import type { Bucket, DraftRow } from "../types";
 import { fail, num } from "./util";
+import { requireSession } from "../auth/guard";
 
 export interface OverviewData {
   draftsToday: number;
@@ -25,6 +26,7 @@ export interface OverviewData {
 const BN_DAYS = ["রবি", "সোম", "মঙ্গল", "বুধ", "বৃহ", "শুক্র", "শনি"];
 
 export async function getOverview(): Promise<OverviewData> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const now = Date.now();
   const todayStart = dhakaDayStartISO(0, now);

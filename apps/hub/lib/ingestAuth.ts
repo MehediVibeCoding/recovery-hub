@@ -1,6 +1,9 @@
 import "server-only";
 import { verifyIngestRequest } from "@recovery-hub/shared";
 import { getSupabaseServiceClient } from "./supabase/server";
+import { writeAudit } from "./audit";
+import { clientIp } from "./auth/request";
+import { rateLimit } from "./auth/rateLimit";
 
 const MAX_BODY_BYTES = 32 * 1024;
 
@@ -15,7 +18,7 @@ export type IngestAuthResult =
  * so a key can be revoked/rotated later without a code change — the
  * per-key secret itself is Phase 2+ once there's more than one caller.
  */
-export async function checkIngestAuth(req: Request): Promise<IngestAuthResult> {
+async function checkIngestAuthInner(req: Request): Promise<IngestAuthResult> {
   const apiKeyPrefix = req.headers.get("x-api-key");
   const timestamp = req.headers.get("x-timestamp");
   const signatureHex = req.headers.get("x-signature");
@@ -58,4 +61,29 @@ export async function checkIngestAuth(req: Request): Promise<IngestAuthResult> {
     .eq("id", key.id);
 
   return { ok: true, rawBody };
+}
+
+/**
+ * checkIngestAuthInner-এর ওপর পাতলা মোড়ক: ব্যর্থ হলে audit_log-এ কারণ লেখে (প্রতি কারণে মিনিটে ১টা — ফ্লাড হয় না)।
+ * এতে মূল সাইট থেকে ডাটা কেন আসছে না (ভুল secret/key, পুরনো টাইমস্ট্যাম্প ইত্যাদি) audit_log দেখলেই ধরা যায়।
+ */
+export async function checkIngestAuth(req: Request): Promise<IngestAuthResult> {
+  const result = await checkIngestAuthInner(req);
+  if (!result.ok) {
+    try {
+      const path = new URL(req.url).pathname;
+      const key = `ingest-fail:${result.code}:${path}`;
+      if (await rateLimit(key, 1, 60)) {
+        await writeAudit(
+          "ingest.auth_failed",
+          path,
+          { code: result.code, message: result.message, ip: clientIp(req.headers), api_key: req.headers.get("x-api-key")?.slice(0, 24) ?? null },
+          "ingest"
+        );
+      }
+    } catch {
+      /* লগ ব্যর্থ হলে মূল রেসপন্স আটকাবে না */
+    }
+  }
+  return result;
 }

@@ -5,6 +5,7 @@ import { dhakaDateToISO } from "../format";
 import { safeSearchTerm } from "../security";
 import type { OrderRow } from "../types";
 import { fail, num, pageParam, strParam } from "./util";
+import { requireSession } from "../auth/guard";
 
 export interface OrdersParams {
   status: string; // "all" বা order_status মান
@@ -59,6 +60,7 @@ export interface OrdersPage {
 }
 
 export async function listOrders(p: OrdersParams): Promise<OrdersPage> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const from = (p.page - 1) * PAGE_SIZE;
 
@@ -107,6 +109,7 @@ export interface OrderDetail {
 }
 
 export async function getOrderDetail(id: string): Promise<OrderDetail | null> {
+  await requireSession();
   const supabase = getSupabaseServiceClient();
   const { data: order, error } = await supabase.from("orders_backup").select("*").eq("id", id).maybeSingle();
   if (error) fail("অর্ডার ডিটেইল", error);

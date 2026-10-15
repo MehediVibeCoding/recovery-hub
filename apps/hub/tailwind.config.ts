@@ -4,6 +4,8 @@ import plugin from "tailwindcss/plugin";
 // Mehediadmin-এর DESIGN_SYSTEM.md v2 অনুযায়ী টোকেন — দুই প্যানেল একই পরিবার।
 // ⚠️ `sm` = 480px (Tailwind ডিফল্ট 640px নয়), `lg` = কার্ড → টেবিল সুইচ।
 const config: Config = {
+  // AuthBackdrop-এর dark: ক্লাস শুধু `.dark` থাকলে চলে — ব্যবহারকারীর OS-এর ডার্ক সেটিং-এ হাব বদলায় না
+  darkMode: "class",
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     screens: {

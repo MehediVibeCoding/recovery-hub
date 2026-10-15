@@ -7,6 +7,7 @@ import { writeAudit } from "../../lib/audit";
 import { isUuid, sanitizeInput } from "../../lib/security";
 import { RULE_DEFS, validateRuleParams, validateWeights, type WeightsInput } from "../../lib/rules";
 import type { ActionResult } from "../../lib/types";
+import { requireSession } from "../../lib/auth/guard";
 
 async function upsertSetting(key: string, value: unknown): Promise<string | null> {
   const supabase = getSupabaseServiceClient();
@@ -17,6 +18,7 @@ async function upsertSetting(key: string, value: unknown): Promise<string | null
 }
 
 export async function saveRule(key: string, enabled: boolean, params: Record<string, unknown>): Promise<ActionResult> {
+  await requireSession();
   if (!(key in RULE_DEFS)) return { ok: false, error: "অজানা রুল" };
   const v = validateRuleParams(key, params);
   if (!v.ok) return { ok: false, error: v.error };
@@ -32,6 +34,7 @@ export async function saveRule(key: string, enabled: boolean, params: Record<str
 }
 
 export async function saveWeights(input: WeightsInput): Promise<ActionResult> {
+  await requireSession();
   const v = validateWeights(input);
   if (!v.ok) return { ok: false, error: v.error };
   const err = await upsertSetting("priority.weights", v.value);
@@ -42,6 +45,7 @@ export async function saveWeights(input: WeightsInput): Promise<ActionResult> {
 }
 
 export async function saveStoreSettings(storeName: string, locale: string): Promise<ActionResult> {
+  await requireSession();
   const name = sanitizeInput(storeName, 60);
   if (!name) return { ok: false, error: "স্টোরের নাম দিন" };
   if (locale !== "bn" && locale !== "en") return { ok: false, error: "অবৈধ ভাষা" };
@@ -58,6 +62,7 @@ export async function saveStoreSettings(storeName: string, locale: string): Prom
 const KINDS = ["phone", "email", "ip_hash", "name_word", "address_word"] as const;
 
 export async function addListEntry(kind: string, valueInput: string, list: string, reasonInput: string): Promise<ActionResult> {
+  await requireSession();
   if (!KINDS.includes(kind as (typeof KINDS)[number])) return { ok: false, error: "অবৈধ ধরন" };
   if (list !== "allow" && list !== "block") return { ok: false, error: "অবৈধ তালিকা" };
   let value = sanitizeInput(valueInput, 200);
@@ -92,6 +97,7 @@ export async function addListEntry(kind: string, valueInput: string, list: strin
 }
 
 export async function removeListEntry(id: string): Promise<ActionResult> {
+  await requireSession();
   if (!isUuid(id)) return { ok: false, error: "অবৈধ আইডি" };
   const supabase = getSupabaseServiceClient();
   const { data, error } = await supabase.from("list_entries").delete().eq("id", id).select("kind,value,list").maybeSingle();
@@ -102,6 +108,7 @@ export async function removeListEntry(id: string): Promise<ActionResult> {
 }
 
 export async function setApiKeyActive(id: string, active: boolean): Promise<ActionResult> {
+  await requireSession();
   if (!isUuid(id)) return { ok: false, error: "অবৈধ আইডি" };
   const supabase = getSupabaseServiceClient();
   const { data, error } = await supabase
