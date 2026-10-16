@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { verifyIngestRequest } from "@recovery-hub/shared";
 import { getSupabaseServiceClient } from "./supabase/server";
 import { writeAudit } from "./audit";
@@ -7,9 +8,12 @@ import { rateLimit } from "./auth/rateLimit";
 
 const MAX_BODY_BYTES = 32 * 1024;
 
+// DEBUG (ডিবাগ শেষে মুছে ফেলুন): secret/body-র ছোট fingerprint — আসল মান বোঝা যায় না
+const fp = (s: string) => createHash("sha256").update(s, "utf8").digest("hex").slice(0, 8);
+
 export type IngestAuthResult =
   | { ok: true; rawBody: string }
-  | { ok: false; status: number; code: string; message: string };
+  | { ok: false; status: number; code: string; message: string; debug?: Record<string, unknown> };
 
 /**
  * Phase 1 simplification: one shared signing secret from
@@ -39,7 +43,18 @@ async function checkIngestAuthInner(req: Request): Promise<IngestAuthResult> {
 
   const verified = verifyIngestRequest({ secret, timestamp, rawBody, signatureHex });
   if (!verified.ok) {
-    return { ok: false, status: 401, code: verified.reason ?? "auth", message: "signature check failed" };
+    return {
+      ok: false,
+      status: 401,
+      code: verified.reason ?? "auth",
+      message: "signature check failed",
+      debug: {
+        secret_len: secret.length,
+        secret_fp: fp(secret),
+        body_len: Buffer.byteLength(rawBody, "utf8"),
+        body_fp: fp(rawBody),
+      },
+    };
   }
 
   const supabase = getSupabaseServiceClient();
@@ -77,7 +92,7 @@ export async function checkIngestAuth(req: Request): Promise<IngestAuthResult> {
         await writeAudit(
           "ingest.auth_failed",
           path,
-          { code: result.code, message: result.message, ip: clientIp(req.headers), api_key: req.headers.get("x-api-key")?.slice(0, 24) ?? null },
+          { code: result.code, message: result.message, ip: clientIp(req.headers), api_key: req.headers.get("x-api-key")?.slice(0, 24) ?? null, ...(result.debug ?? {}) },
           "ingest"
         );
       }
