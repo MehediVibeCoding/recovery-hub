@@ -3,13 +3,17 @@ import type { DraftInput, ScoreResult } from "./types.ts";
 import { combineDraftScore } from "./score.ts";
 
 /**
- * The owner's existing order-scoring engine (used on the live Vangcur site)
- * is left completely untouched. This is a separate, new engine built
- * specifically for abandoned-checkout drafts — see docs/06 and the "new
- * engine" conversation. History/courier/blocklist/allowlist checks need the
- * database, so they live one layer up in the Hub rule layer
- * (@recovery-hub/shared `applyRuleLayer`), not here.
+ * চেকআউট-ড্রাফটের (abandoned checkout) জন্য আলাদা স্কোরিং ইঞ্জিন v2।
+ *
+ * মেইন সাইটের অর্ডার-ইঞ্জিন (cloud-vangcur/lib/riskEngine.ts) থেকে ফোন, নাম, ঠিকানা (গিবারিশ ও
+ * জেলা-উপজেলা-ইউনিয়ন মিল), ইমেইল ও অ্যামাউন্ট-যাচাই নেওয়া হয়েছে। যে ডেটা ড্রাফটে আসে না
+ * (অগ্রিম/বিকাশ, আইপি, লিমিট-হিট, কুরিয়ার, honeypot) সেগুলো ইচ্ছাকৃতভাবে বাদ।
+ *
+ * ব্লক/অ্যালো-লিস্ট, কুরিয়ার/রিটার্ন-ইতিহাস রুল ডেটাবেস লাগে বলে একধাপ ওপরে —
+ * Hub rule layer (@recovery-hub/shared `applyRuleLayer`)-এ।
  */
+export const ENGINE_VERSION = 2;
+
 export function scoreDraft(input: DraftInput): ScoreResult {
   const phoneNormalized = normalizeBdPhone(input.phoneRaw);
 
@@ -19,34 +23,25 @@ export function scoreDraft(input: DraftInput): ScoreResult {
       bucket: "no_contact",
       confidence: 0,
       phoneNormalized: null,
-      factors: [
-        { module: "phone", points: 0, reason: "কোনো বৈধ ফোন নম্বর পাওয়া যায়নি" },
-      ],
+      factors: [{ module: "phone", points: 0, reason: "কোনো বৈধ ফোন নম্বর পাওয়া যায়নি" }],
+      flags: [],
+      hardJunk: false,
     };
   }
 
-  const combined = combineDraftScore(input);
-
-  // Honeypot catches are a near-certain bot signal — override the averaged
-  // score instead of letting it get diluted by unrelated good-looking fields.
-  const honeypotCaught = input.behavior?.honeypotFilled === true;
-  const score = honeypotCaught ? 0 : combined.score;
-  const confidence = honeypotCaught ? 1 : combined.confidence;
-  const factors = combined.factors;
+  const c = combineDraftScore(input, phoneNormalized);
 
   return {
-    score,
-    // bucket here is provisional — the Hub rule layer (history/courier/
-    // blocklist/confidence) makes the final call before storage.
-    bucket: score >= 70 ? "high" : score >= 40 ? "review" : "low",
-    confidence,
+    score: c.score,
+    // সাময়িক বাকেট — চূড়ান্ত সিদ্ধান্ত Hub rule layer-এর
+    bucket: c.hardJunk ? "junk" : c.score >= 70 ? "high" : c.score >= 45 ? "review" : "low",
+    confidence: c.confidence,
     phoneNormalized,
-    factors: [
-      { module: "phone", points: 100, reason: "বৈধ ফোন নম্বর পাওয়া গেছে" },
-      ...factors,
-    ],
+    factors: c.factors,
+    flags: c.flags,
+    hardJunk: c.hardJunk,
   };
 }
 
-export type { DraftInput, ScoreResult, TrustBucket, ScoreFactor } from "./types.ts";
-export { combineDraftScore } from "./score.ts";
+export type { DraftInput, ScoreResult, TrustBucket, ScoreFactor, FactorTone } from "./types.ts";
+export { combineDraftScore, WEIGHTS, CAPS } from "./score.ts";

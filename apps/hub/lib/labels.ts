@@ -25,6 +25,14 @@ export const FLAG_LABELS: Record<string, string> = {
   repeat_returner: "বারবার রিটার্ন",
   courier_low_success: "কুরিয়ারে কম সফলতা",
   low_confidence: "কম কনফিডেন্স",
+  low_score: "কম ট্রাস্ট স্কোর",
+  gibberish_address: "ঠিকানা অর্থহীন",
+  refusal_text: "ঠিকানায় বাতিলের লেখা",
+  district_mismatch: "জেলা ও ঠিকানা মেলে না",
+  bad_name: "নাম সন্দেহজনক",
+  suspicious_phone: "ফোন নম্বর সন্দেহজনক",
+  disposable_email: "সাময়িক ইমেইল",
+  fake_identity: "ভুয়া পরিচয়",
 };
 
 // অর্ডার স্ট্যাটাস রং — Mehediadmin ORDER_STATUS_META-র পরিবার

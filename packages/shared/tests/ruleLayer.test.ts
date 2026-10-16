@@ -57,3 +57,31 @@ test("clean high score with no flags -> high", () => {
   assert.equal(r.bucket, "high");
   assert.deepEqual(r.flags, []);
 });
+
+test("engine hardJunk -> junk (fake identity)", () => {
+  const r = applyRuleLayer({ phoneNormalized: "01712345678", score: 10, confidence: 0.7, engineJunk: true });
+  assert.equal(r.bucket, "junk");
+  assert.ok(r.flags.includes("fake_identity"));
+});
+
+test("allowlist still wins over engine hardJunk", () => {
+  const r = applyRuleLayer({ phoneNormalized: "01712345678", score: 10, confidence: 0.7, engineJunk: true, allowlisted: true });
+  assert.equal(r.bucket, "high");
+});
+
+test("suspicious engine flag forces review even with a high score", () => {
+  const r = applyRuleLayer({ phoneNormalized: "01712345678", score: 85, confidence: 0.8, engineFlags: ["gibberish_address"] });
+  assert.equal(r.bucket, "review");
+  assert.ok(r.flags.includes("gibberish_address"));
+});
+
+test("very low score -> review with low_score flag", () => {
+  const r = applyRuleLayer({ phoneNormalized: "01712345678", score: 30, confidence: 0.8 });
+  assert.equal(r.bucket, "review");
+  assert.ok(r.flags.includes("low_score"));
+});
+
+test("a normal medium score (45-69) stays medium", () => {
+  const r = applyRuleLayer({ phoneNormalized: "01712345678", score: 55, confidence: 0.8 });
+  assert.equal(r.bucket, "medium");
+});

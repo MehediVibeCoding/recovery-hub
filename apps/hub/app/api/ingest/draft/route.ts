@@ -6,7 +6,7 @@ import {
   applyRuleLayer,
   computePriority,
 } from "@recovery-hub/shared";
-import { scoreDraft } from "@recovery-hub/engine-drafts";
+import { scoreDraft, ENGINE_VERSION } from "@recovery-hub/engine-drafts";
 import { getSupabaseServiceClient } from "../../../../lib/supabase/server";
 import { checkIngestAuth } from "../../../../lib/ingestAuth";
 import { loadScoringConfig } from "../../../../lib/hubConfig";
@@ -42,8 +42,24 @@ export async function POST(req: Request) {
   }
   const draft = parsed.data;
 
-  const phoneNormalized = normalizeBdPhone(draft.phone);
   const supabase = getSupabaseServiceClient();
+
+  // Merge-safe: আগের ড্রাফট আগে আনা হয়, যাতে এই রিকোয়েস্টে কোনো ফিল্ড (যেমন ঠিকানা) না এলেও
+  // স্কোর আগে-জমা-হওয়া তথ্য নিয়েই হয় — আংশিক আপডেটে স্কোর ভুলভাবে কমে/বাড়ে না।
+  const { data: existing } = await supabase
+    .from("checkout_drafts")
+    .select("id, customer_name, phone, phone_raw, email, address, district, upazila, notes, cart_total")
+    .eq("session_id", draft.session_id)
+    .maybeSingle();
+
+  const phoneNormalized = normalizeBdPhone(draft.phone) || existing?.phone || null;
+  const effective = {
+    name: draft.customer_name || existing?.customer_name || undefined,
+    email: draft.email || existing?.email || undefined,
+    address: draft.address || existing?.address || undefined,
+    district: draft.district || existing?.district || undefined,
+    cartTotal: draft.cart_total ?? (existing?.cart_total != null ? Number(existing.cart_total) : undefined),
+  };
 
   // list_entries (blocklist/allowlist) + contacts (history/courier) lookups.
   const [blockRes, allowRes, contactRes] = await Promise.all([
@@ -74,15 +90,6 @@ export async function POST(req: Request) {
       : Promise.resolve({ data: null }),
   ]);
 
-  const engineResult = scoreDraft({
-    phoneRaw: draft.phone,
-    address: draft.address,
-    cartTotal: draft.cart_total,
-    cartItems: draft.cart_items?.map((i) => ({ id: i.product_id, qty: i.qty })),
-    hourOfDay: draft.hour_of_day,
-    behavior: draft.behavior,
-  });
-
   const history = contactRes.data
     ? {
         delivered: contactRes.data.delivered_count,
@@ -95,42 +102,49 @@ export async function POST(req: Request) {
       ? { success: contactRes.data.courier_success, total: contactRes.data.courier_total }
       : undefined;
 
+  const engineResult = scoreDraft({
+    phoneRaw: phoneNormalized ?? undefined,
+    name: effective.name,
+    email: effective.email,
+    address: effective.address,
+    district: effective.district,
+    cartTotal: effective.cartTotal,
+    hourOfDay: draft.hour_of_day,
+    history,
+  });
+
   // Settings পেজে বদলানো রুল/ওয়েট (ব্যর্থ হলে ডিফল্ট)
   const scoring = await loadScoringConfig();
 
   const ruled = applyRuleLayer(
     {
-    phoneNormalized: engineResult.phoneNormalized,
-    score: engineResult.score,
-    confidence: engineResult.confidence,
-    blocklisted: Boolean(blockRes.data),
-    allowlisted: Boolean(allowRes.data),
-    history,
-    courier,
-  },
-  scoring.ruleParams
+      phoneNormalized: engineResult.phoneNormalized,
+      score: engineResult.score,
+      confidence: engineResult.confidence,
+      blocklisted: Boolean(blockRes.data),
+      allowlisted: Boolean(allowRes.data),
+      history,
+      courier,
+      engineFlags: engineResult.flags,
+      engineJunk: engineResult.hardJunk,
+    },
+    scoring.ruleParams
   );
 
   const priority = computePriority({
     bucket: ruled.bucket,
     trustScore: engineResult.score,
     confidence: engineResult.confidence,
-    cartTotal: draft.cart_total ?? 0,
+    cartTotal: effective.cartTotal ?? 0,
     minutesSinceActivity: 0, // this request IS the activity
   }, scoring.weights);
 
   // Merge-safe upsert: an incoming empty/missing field never overwrites an
   // existing non-empty value. cart_* replaces as a whole when provided.
-  const { data: existing } = await supabase
-    .from("checkout_drafts")
-    .select("id, customer_name, phone, phone_raw, email, address, district, upazila, notes")
-    .eq("session_id", draft.session_id)
-    .maybeSingle();
-
   const merged = {
     session_id: draft.session_id,
     customer_name: draft.customer_name || existing?.customer_name || null,
-    phone: phoneNormalized || existing?.phone || null,
+    phone: phoneNormalized,
     phone_raw: draft.phone || existing?.phone_raw || null,
     email: draft.email || existing?.email || null,
     address: draft.address || existing?.address || null,
@@ -154,7 +168,7 @@ export async function POST(req: Request) {
     trust_score: engineResult.score,
     trust_confidence: engineResult.confidence,
     trust_result: engineResult,
-    engine_version: 1,
+    engine_version: ENGINE_VERSION,
     rule_flags: ruled.flags,
     scored_at: new Date().toISOString(),
     bucket: ruled.bucket,
